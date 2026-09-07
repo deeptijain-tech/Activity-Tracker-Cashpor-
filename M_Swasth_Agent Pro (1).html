@@ -787,5 +787,103 @@
             });
         }
     </script>
+    <!-- ====== SEARCH BOX & MISSING AGENTS FIX (START) ====== -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+<style>
+    /* Search Box Design */
+    .select2-container--default .select2-selection--single {
+        background-color: #ffffff !important;
+        border: 2px solid #cbd5e1 !important;
+        border-bottom: 4px solid #94a3b8 !important;
+        border-radius: 10px !important;
+        height: 48px !important;
+        display: flex !important;
+        align-items: center !important;
+        font-weight: 800 !important;
+        font-size: 1.1rem !important;
+        color: #1e293b !important;
+    }
+    .select2-selection__arrow { top: 10px !important; }
+    .select2-search__field { outline: none !important; border-radius: 5px !important; }
+</style>
+
+<script>
+$(document).ready(function() {
+    var myAgents = [];
+
+    // 1. CSV अपलोड होते ही सारे नाम पकड़ना
+    $(document).on('change', 'input[type="file"]', function(e) {
+        var file = e.target.files[0];
+        if(!file) return;
+
+        Papa.parse(file, {
+            header: true,
+            skipEmptyLines: true,
+            complete: function(results) {
+                var agentsSet = new Set();
+                results.data.forEach(function(row) {
+                    var name = row['Med Agent'] || row['Agent'] || row['Name'] || row['Agent Name'];
+                    if(!name) {
+                        var keys = Object.keys(row);
+                        for(var i=0; i<keys.length; i++) {
+                            if(keys[i].toLowerCase().includes('agent') || keys[i].toLowerCase().includes('name')) {
+                                name = row[keys[i]];
+                                break;
+                            }
+                        }
+                    }
+                    if(name && name.trim() !== "") {
+                        agentsSet.add(name.trim());
+                    }
+                });
+                myAgents = Array.from(agentsSet).sort();
+            }
+        });
+    });
+
+    // 2. सर्च बॉक्स लगाना और मिसिंग नाम ऐड करना
+    setInterval(function() {
+        var $select = $('#agentSelect');
+        if ($select.length === 0) return;
+
+        // अगर CSV से नाम आ गए हैं तो उन्हें लिस्ट में डालना
+        if(myAgents.length > 0) {
+            var existing = [];
+            $select.find('option').each(function(){ existing.push($(this).val()); });
+
+            var added = false;
+            myAgents.forEach(function(agent) {
+                if(!existing.includes(agent)) {
+                    $select.append(new Option(agent, agent));
+                    added = true;
+                }
+            });
+
+            // अगर नए नाम जुड़े हैं तो सर्च बॉक्स को रिफ्रेश करना
+            if(added && $select.hasClass("select2-hidden-accessible")) {
+                $select.trigger('change.select2');
+            }
+        }
+
+        // सर्च बॉक्स (Select2) एक्टिवेट करना
+        if (!$select.hasClass("select2-hidden-accessible")) {
+            $select.select2({
+                placeholder: "🔍 Search Agent (Ex: RO)...",
+                width: '100%'
+            });
+
+            // सर्च से नाम सेलेक्ट करने पर डैशबोर्ड अपडेट करना
+            $select.on('select2:select', function (e) {
+                var event = new Event('change', { bubbles: true });
+                this.dispatchEvent(event);
+            });
+        }
+    }, 1000);
+});
+</script>
+<!-- ====== SEARCH BOX & MISSING AGENTS FIX (END) ====== -->
 </body>
 </html>
