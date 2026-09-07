@@ -787,5 +787,98 @@
             });
         }
     </script>
+    <!-- ====== FINAL SEARCH BOX & MISSING AGENT FIX ====== -->
+<script>
+    // एक सुंदर सर्च बॉक्स बनाएँ
+    var searchBox = document.createElement("input");
+    searchBox.setAttribute("type", "text");
+    searchBox.setAttribute("placeholder", "🔍 Type to Search Agent (Ex: RO)...");
+    searchBox.style.width = "100%";
+    searchBox.style.padding = "10px 15px";
+    searchBox.style.marginBottom = "10px";
+    searchBox.style.borderRadius = "8px";
+    searchBox.style.border = "2px solid #ea580c";
+    searchBox.style.fontWeight = "bold";
+    searchBox.style.color = "#1e293b";
+    searchBox.style.outline = "none";
+    
+    var mySelect = null;
+    var allNames = [];
+    var isSearchAdded = false;
+
+    // जब CSV फाइल अपलोड हो
+    document.addEventListener("change", function(e) {
+        if(e.target && e.target.type === "file") {
+            var file = e.target.files[0];
+            if(!file) return;
+
+            // 1.5 सेकंड रुकें ताकि तुम्हारा पुराना कोड अपना काम कर ले
+            setTimeout(function() {
+                mySelect = document.getElementById("agentSelect");
+                if(!mySelect) return;
+
+                // सर्च बॉक्स को ड्रॉपडाउन के ठीक ऊपर लगाएँ
+                if(!isSearchAdded) {
+                    mySelect.parentNode.insertBefore(searchBox, mySelect);
+                    isSearchAdded = true;
+                }
+
+                // CSV से रजनी और सारे नाम निकालना
+                Papa.parse(file, {
+                    header: true,
+                    skipEmptyLines: true,
+                    complete: function(results) {
+                        var tempSet = new Set();
+                        results.data.forEach(function(row) {
+                            var name = row["Med Agent"] || row["Agent"] || row["Name"] || row["Agent Name"] || "";
+                            var code = row["Med Agent Code"] || row["Code"] || row["Agent Code"] || "";
+                            
+                            var fullName = name;
+                            if(name && code) fullName = name + " (" + code + ")";
+                            
+                            if(fullName.trim() !== "") {
+                                tempSet.add(fullName.trim());
+                            }
+                        });
+                        
+                        allNames = Array.from(tempSet).sort();
+                        
+                        // सारे नाम (मिसिंग वाले भी) ड्रॉपडाउन में डाल दें
+                        var currentVal = mySelect.value;
+                        mySelect.innerHTML = "";
+                        allNames.forEach(function(ag) {
+                            var opt = document.createElement("option");
+                            opt.value = ag;
+                            opt.innerHTML = ag;
+                            mySelect.appendChild(opt);
+                        });
+                        
+                        // जो पहले सेलेक्ट था, उसे वापस सेलेक्ट करना
+                        if(currentVal && allNames.includes(currentVal)) {
+                            mySelect.value = currentVal;
+                        }
+                    }
+                });
+            }, 1500); 
+        }
+    });
+
+    // जब तुम सर्च बॉक्स में कुछ टाइप करो
+    searchBox.addEventListener("input", function() {
+        if(!mySelect) return;
+        var typedText = this.value.toLowerCase().trim();
+        
+        mySelect.innerHTML = "";
+        allNames.forEach(function(ag) {
+            if(ag.toLowerCase().includes(typedText)) {
+                var opt = document.createElement("option");
+                opt.value = ag;
+                opt.innerHTML = ag;
+                mySelect.appendChild(opt);
+            }
+        });
+    });
+</script>
+<!-- ====== FINAL SEARCH BOX & MISSING AGENT FIX ====== -->
 </body>
 </html>
