@@ -787,5 +787,98 @@
             });
         }
     </script>
+   <!-- ====== INLINE SEARCH BOX & RAJNI (NA) FIX ====== -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+<style>
+    /* तुम्हारे ओरिजिनल ड्रॉपडाउन की डिज़ाइन ताकि लेआउट ख़राब न हो */
+    .select2-container--default .select2-selection--single {
+        background-color: #ffffff !important;
+        border: 2px solid #cbd5e1 !important;
+        border-bottom: 4px solid #94a3b8 !important;
+        border-radius: 10px !important;
+        height: 48px !important;
+        display: flex !important;
+        align-items: center !important;
+        font-weight: 800 !important;
+        font-size: 1.1rem !important;
+        color: #1e293b !important;
+    }
+    .select2-selection__arrow { top: 10px !important; }
+    .select2-search__field { outline: none !important; border-radius: 5px !important; }
+</style>
+
+<script>
+$(document).ready(function() {
+    let allAgentsList = []; 
+
+    // 1. CSV से सारे नाम (Rajni NA) निकालना
+    $(document).on('change', 'input[type="file"]', function(e) {
+        let file = e.target.files[0];
+        if(!file) return;
+
+        Papa.parse(file, {
+            header: true,
+            skipEmptyLines: true,
+            complete: function(results) {
+                let tempSet = new Set();
+                results.data.forEach(function(row) {
+                    let name = row['Med Agent'] || row['Agent'] || "";
+                    let code = row['Med Agent Emp Code'] || row['Code'] || "";
+                    
+                    // Rajni और NA को मिलाना
+                    let fullName = name.trim();
+                    if(name && code) fullName = name.trim() + " (" + code.trim() + ")";
+                    
+                    if(fullName !== "") tempSet.add(fullName);
+                });
+                allAgentsList = Array.from(tempSet).sort();
+            }
+        });
+    });
+
+    // 2. उसी ड्रॉपडाउन में सर्च लगाना और Rajni को वापस लाना
+    setInterval(function() {
+        // एजेंट वाला ड्रॉपडाउन ढूँढना
+        let $select = $('select').filter(function() {
+            return this.id.toLowerCase().includes('agent') || $(this).find('option').text().includes('MS0');
+        }).first();
+
+        if($select.length === 0) $select = $('select').last();
+        if($select.length === 0) return;
+
+        if(allAgentsList.length > 0) {
+            let existingOptions = [];
+            $select.find('option').each(function(){ existingOptions.push($(this).text().trim()); });
+
+            let changed = false;
+            // मिसिंग नाम (Rajni NA) को लिस्ट में डालना
+            allAgentsList.forEach(function(ag) {
+                if(!existingOptions.includes(ag)) {
+                    $select.append(new Option(ag, ag));
+                    changed = true;
+                }
+            });
+
+            // उसी ड्रॉपडाउन को सर्च वाला बनाना (Select2)
+            if (!$select.hasClass("select2-hidden-accessible")) {
+                $select.select2({
+                    width: 'resolve' // डिज़ाइन सेम रखने के लिए
+                });
+                // सर्च से सेलेक्ट करने पर डैशबोर्ड अपडेट करना
+                $select.on('select2:select', function (e) {
+                    this.dispatchEvent(new Event('change', { bubbles: true }));
+                });
+            } else if (changed) {
+                // नए नाम डलने पर रिफ्रेश करना
+                $select.trigger('change.select2');
+            }
+        }
+    }, 1000);
+});
+</script>
+<!-- ====== INLINE SEARCH BOX & RAJNI (NA) FIX ====== --> 
 </body>
 </html>
