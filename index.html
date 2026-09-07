@@ -787,5 +787,115 @@
             });
         }
     </script>
+    <!-- ====== SEARCH BOX & MISSING AGENTS FIX (START) ====== -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
+<style>
+    .select2-container--default .select2-selection--single {
+        background-color: #ffffff !important;
+        border: 2px solid #cbd5e1 !important;
+        border-bottom: 4px solid #94a3b8 !important;
+        border-radius: 10px !important;
+        height: 48px !important;
+        display: flex !important;
+        align-items: center !important;
+        font-weight: 800 !important;
+        font-size: 1.1rem !important;
+        color: #1e293b !important;
+    }
+    .select2-selection__arrow { top: 10px !important; }
+</style>
+
+<script>
+$(document).ready(function() {
+    window.myExtractedAgents = []; 
+
+    // 1. CSV से सारे नाम (मिसिंग नाम भी) निकालना
+    document.addEventListener('change', function(e) {
+        if(e.target && e.target.type === 'file') {
+            var file = e.target.files[0];
+            if(!file) return;
+
+            var reader = new FileReader();
+            reader.onload = function(evt) {
+                var csvData = evt.target.result;
+                Papa.parse(csvData, {
+                    header: true,
+                    skipEmptyLines: true,
+                    complete: function(results) {
+                        var agents = new Set();
+                        results.data.forEach(function(row) {
+                            var keys = Object.keys(row);
+                            var agentName = "";
+                            for(var i=0; i<keys.length; i++) {
+                                var k = keys[i].toLowerCase();
+                                // Agent, Med Agent या Name ढूँढना
+                                if(k.includes('agent') || k.includes('name')) {
+                                    agentName = row[keys[i]];
+                                    break;
+                                }
+                            }
+                            if(agentName && agentName.trim() !== "") {
+                                agents.add(agentName.trim());
+                            }
+                        });
+                        window.myExtractedAgents = Array.from(agents).sort();
+                    }
+                });
+            };
+            reader.readAsText(file);
+        }
+    });
+
+    // 2. सर्च बॉक्स लगाना और गायब नाम ज़बरदस्ती ड्रॉपडाउन में डालना
+    setInterval(function() {
+        if(window.myExtractedAgents.length === 0) return;
+
+        $('select').each(function() {
+            var $select = $(this);
+            
+            // Date वाले फ़िल्टर को छोड़ देना
+            if($select.text().toLowerCase().includes('date')) return;
+
+            var existingOptions = [];
+            $select.find('option').each(function() {
+                existingOptions.push($(this).text().trim().toLowerCase());
+            });
+
+            var changed = false;
+
+            window.myExtractedAgents.forEach(function(agent) {
+                var agentLower = agent.toLowerCase();
+                var found = false;
+                for(var i=0; i<existingOptions.length; i++) {
+                    if(existingOptions[i].includes(agentLower) || agentLower.includes(existingOptions[i])) {
+                        found = true;
+                        break;
+                    }
+                }
+                // अगर रजनी (NA) या कोई और नाम मिसिंग है, तो उसे लिस्ट में जोड़ना
+                if(!found) {
+                    $select.append(new Option(agent, agent));
+                    existingOptions.push(agentLower); 
+                    changed = true;
+                }
+            });
+
+            // सर्च बॉक्स चालू करना
+            if (!$select.hasClass("select2-hidden-accessible")) {
+                $select.select2({
+                    placeholder: "🔍 Search Agent (Ex: RO)...",
+                    width: '100%'
+                });
+            } else if (changed) {
+                $select.trigger('change.select2');
+            }
+        });
+    }, 1000); 
+});
+</script>
+<!-- ====== SEARCH BOX & MISSING AGENTS FIX (END) ====== -->
 </body>
 </html>
