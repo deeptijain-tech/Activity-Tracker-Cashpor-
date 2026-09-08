@@ -383,16 +383,24 @@
             });
 
 
-            // Create a unique list of agents based on Emp Code
+            // FIXED: Make unique agents using BOTH Name and Emp Code
             const agentMap = new Map();
             rawData.forEach(r => {
-                const name = r['Med Agent'] || 'Unknown';
-                const code = r['Med Agent Emp Code'] || 'Unknown';
-                const key = name + ' (' + code + ')';
-                if(!agentMap.has(code)) {
-                    agentMap.set(code, { name: name, key: key, code: code });
+                const name = (r['Med Agent'] || 'Unknown').trim();
+                const code = (r['Med Agent Emp Code'] || 'NA').trim();
+                const uniqueKey = name + '|||' + code;
+                const displayKey = name + ' (' + code + ')';
+
+                if(!agentMap.has(uniqueKey)) {
+                    agentMap.set(uniqueKey, { 
+                        name: name, 
+                        code: code, 
+                        uniqueKey: uniqueKey, 
+                        displayKey: displayKey 
+                    });
                 }
             });
+
             const agents = Array.from(agentMap.values()).sort((a, b) => a.name.localeCompare(b.name));
             
             const agentSelect = document.getElementById('agentSelect');
@@ -400,8 +408,8 @@
             
             agents.forEach(a => {
                 let opt = document.createElement('option');
-                opt.value = a.code; // Store MS ID as value
-                opt.textContent = `👤 ${a.key}`;
+                opt.value = a.uniqueKey; 
+                opt.textContent = `👤 ${a.displayKey}`;
                 agentSelect.appendChild(opt);
             });
 
@@ -420,16 +428,24 @@
 
 
         function updateDashboard() {
-            const agentCode = document.getElementById('agentSelect').value;
             const agentSelectElem = document.getElementById('agentSelect');
-            const agentText = agentSelectElem.options[agentSelectElem.selectedIndex].text.replace('👤 ', '');
+            if (!agentSelectElem.value) return;
+
+            const selectedUniqueKey = agentSelectElem.value;
+            const [agentName, agentCode] = selectedUniqueKey.split('|||');
             
+            const agentText = agentSelectElem.options[agentSelectElem.selectedIndex].text.replace('👤 ', '');
             const selectedDate = document.getElementById('dateSelect').value;
             
             document.getElementById('agentNameDisplay').textContent = agentText;
             document.getElementById('agentAvatar').textContent = '👤';
 
-            let agentData = rawData.filter(r => r['Med Agent Emp Code'] === agentCode);
+            // Filter accurately by both Name and Emp Code
+            let agentData = rawData.filter(r => {
+                const rName = (r['Med Agent'] || 'Unknown').trim();
+                const rCode = (r['Med Agent Emp Code'] || 'NA').trim();
+                return rName === agentName && rCode === agentCode;
+            });
             if(selectedDate !== 'All') {
                 agentData = agentData.filter(r => r['Date'] === selectedDate);
             }
