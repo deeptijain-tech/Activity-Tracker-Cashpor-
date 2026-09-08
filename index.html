@@ -787,5 +787,90 @@
             });
         }
     </script>
+    <!-- ====== FIX: MISSING AGENTS & SEARCH BOX ====== -->
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<style>
+    .select2-container--default .select2-selection--single {
+        border: 2px solid #cbd5e1 !important;
+        border-bottom: 4px solid #94a3b8 !important;
+        border-radius: 10px !important;
+        height: 48px !important;
+        display: flex !important;
+        align-items: center !important;
+        font-weight: 800 !important;
+        font-size: 1.1rem !important;
+        color: #1e293b !important;
+    }
+    .select2-selection__arrow { top: 10px !important; }
+    .select2-search__field { outline: none !important; border-radius: 5px !important; }
+</style>
+<script>
+$(document).ready(function() {
+    // 1. Search Box लगाना
+    setInterval(function() {
+        var $sel = $('#agentSelect');
+        if ($sel.length > 0 && !$sel.hasClass("select2-hidden-accessible")) {
+            $sel.select2({ width: '100%' });
+            $sel.on('select2:select', function (e) {
+                this.dispatchEvent(new Event('change', { bubbles: true }));
+            });
+        }
+    }, 1000);
+
+    // 2. Rajni (NA) जैसे मिसिंग नामों को वापस लाना
+    document.addEventListener("change", function(e) {
+        if(e.target && e.target.type === "file") {
+            var file = e.target.files[0];
+            if(!file) return;
+            
+            Papa.parse(file, {
+                header: true,
+                skipEmptyLines: true,
+                complete: function(results) {
+                    setTimeout(function() {
+                        var agentSelect = document.getElementById('agentSelect');
+                        if(!agentSelect) return;
+                        
+                        var agentMap = new Map();
+                        results.data.forEach(function(r) {
+                            var name = r['Med Agent'] || r['Agent'] || r['Name'] || '';
+                            var code = r['Med Agent Emp Code'] || r['Code'] || r['Agent Code'] || 'NA';
+                            var key = name + ' (' + code + ')';
+                            
+                            // नाम और कोड दोनों मिलाकर चेक करना ताकि NA वाले गायब न हों
+                            if(name.trim() !== '' && !agentMap.has(key)) {
+                                agentMap.set(key, { name: name, key: key, code: code });
+                            }
+                        });
+
+                        var agents = Array.from(agentMap.values()).sort(function(a, b) { 
+                            return a.name.localeCompare(b.name); 
+                        });
+                        
+                        var currentVal = agentSelect.value;
+                        agentSelect.innerHTML = '';
+                        
+                        agents.forEach(function(a) {
+                            var opt = document.createElement('option');
+                            opt.value = a.code; 
+                            opt.textContent = '👤 ' + a.key;
+                            agentSelect.appendChild(opt);
+                        });
+
+                        if(currentVal) agentSelect.value = currentVal;
+                        
+                        if($(agentSelect).hasClass("select2-hidden-accessible")) {
+                            $(agentSelect).trigger('change.select2');
+                        }
+                    }, 500); // पुराने कोड के चलने का इंतज़ार
+                }
+            });
+        }
+    });
+});
+</script>
+<!-- ============================================== -->
 </body>
 </html>
