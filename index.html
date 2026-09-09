@@ -353,7 +353,7 @@
         function processData(data) {
             rawData = data.filter(row => {
                 if(!row['Consult StartTime']) return false;
-                if(row['Consult StartTime'].includes('2050')) return false;
+                if(row['Immediate Feedback End Time'] && row['Immediate Feedback End Time'].includes('2050')) return false;
                 if(!row['Med Agent']) return false;
                 return true;
             });
